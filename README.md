@@ -5,6 +5,8 @@ SquareGolf launch monitors. It exposes a local OpenAPI server, a desktop control
 panel, GSPro/Open Connect integrations, Infinite Tees integration, and a
 Nova-style websocket launch-monitor source named SquareLaunch.
 
+![SquareGolf Connector app screen](docs/app-screen.png)
+
 ## Features
 
 - Native Tauri desktop UI with a Rust backend
