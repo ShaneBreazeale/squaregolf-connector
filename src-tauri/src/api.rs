@@ -110,28 +110,55 @@ pub async fn serve_with_store(
     serve_with_ready(config, config_store, |_| Ok(())).await
 }
 
-async fn serve_with_ready<F>(
-    config: AppConfig,
+pub async fn serve_with_ready<F>(
+    mut config: AppConfig,
     config_store: Option<ConfigStore>,
     ready: F,
 ) -> Result<(), String>
 where
     F: FnOnce(SocketAddr) -> Result<(), String>,
 {
+    let (addr, listener) = bind_api_listener(config.api_port).await?;
+    config.api_port = addr.port();
+
     let state = AppState::new(&config);
     squarelaunch::runtime::spawn(config.clone(), state.clone());
 
-    let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, config.api_port));
     let router = router_with_store(state, config_store);
 
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .map_err(|err| format!("bind API server on {addr}: {err}"))?;
     ready(addr)?;
     tracing::info!("API server listening on http://{addr}");
     axum::serve(listener, router)
         .await
         .map_err(|err| format!("API server failed: {err}"))
+}
+
+async fn bind_api_listener(
+    preferred_port: u16,
+) -> Result<(SocketAddr, tokio::net::TcpListener), String> {
+    let mut last_error = None;
+    for offset in 0..100u16 {
+        let Some(port) = preferred_port.checked_add(offset) else {
+            break;
+        };
+        let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, port));
+        match tokio::net::TcpListener::bind(addr).await {
+            Ok(listener) => {
+                if port != preferred_port {
+                    tracing::warn!(
+                        "API port {preferred_port} was unavailable; using http://{addr}"
+                    );
+                }
+                return Ok((addr, listener));
+            }
+            Err(err) => {
+                last_error = Some(format!("bind API server on {addr}: {err}"));
+            }
+        }
+    }
+    Err(last_error.unwrap_or_else(|| {
+        format!("bind API server near port {preferred_port}: no candidate ports")
+    }))
 }
 
 pub fn router(state: AppState) -> Router {

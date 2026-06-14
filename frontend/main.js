@@ -29,6 +29,13 @@ let socket = null;
 let refreshStarted = false;
 
 function setApiBase(url) {
+  if (apiBase !== url) {
+    refreshStarted = false;
+    if (socket) {
+      socket.close();
+      socket = null;
+    }
+  }
   apiBase = url;
   apiUrlEl.textContent = url;
   openapiLink.href = `${url}/api-docs/openapi.json`;
@@ -137,6 +144,24 @@ async function startApiSession() {
   }
 }
 
+async function startTauriApiSession() {
+  addEvent("waiting for API");
+  for (;;) {
+    try {
+      const url = await window.__TAURI__.core.invoke("api_base");
+      if (url) {
+        setApiBase(url);
+        addEvent(`API ready at ${url}`);
+        await startApiSession();
+        return;
+      }
+    } catch (error) {
+      addEvent(`API lookup failed: ${error?.message || "Load failed"}`);
+    }
+    await sleep(300);
+  }
+}
+
 async function runAction(label, action) {
   try {
     await action();
@@ -224,4 +249,8 @@ window.__TAURI__?.event?.listen?.("api-ready", (event) => {
 });
 
 setApiBase(apiBase);
-startApiSession();
+if (window.__TAURI__?.core?.invoke) {
+  startTauriApiSession();
+} else {
+  startApiSession();
+}
