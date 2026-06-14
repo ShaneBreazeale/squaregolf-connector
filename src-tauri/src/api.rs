@@ -91,10 +91,11 @@ pub struct ApiState {
 
 pub async fn spawn_from_env(app: tauri::AppHandle) -> Result<(), String> {
     let config = AppConfig::from_env()?;
-    let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, config.api_port));
-    app.emit("api-ready", format!("http://{addr}"))
-        .map_err(|err| err.to_string())?;
-    serve(config).await
+    serve_with_ready(config, Some(ConfigStore::default()), move |addr| {
+        app.emit("api-ready", format!("http://{addr}"))
+            .map_err(|err| err.to_string())
+    })
+    .await
 }
 
 pub async fn serve(config: AppConfig) -> Result<(), String> {
@@ -105,6 +106,17 @@ pub async fn serve_with_store(
     config: AppConfig,
     config_store: Option<ConfigStore>,
 ) -> Result<(), String> {
+    serve_with_ready(config, config_store, |_| Ok(())).await
+}
+
+async fn serve_with_ready<F>(
+    config: AppConfig,
+    config_store: Option<ConfigStore>,
+    ready: F,
+) -> Result<(), String>
+where
+    F: FnOnce(SocketAddr) -> Result<(), String>,
+{
     let state = AppState::new(&config);
     squarelaunch::runtime::spawn(config.clone(), state.clone());
 
@@ -114,6 +126,7 @@ pub async fn serve_with_store(
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .map_err(|err| format!("bind API server on {addr}: {err}"))?;
+    ready(addr)?;
     tracing::info!("API server listening on http://{addr}");
     axum::serve(listener, router)
         .await

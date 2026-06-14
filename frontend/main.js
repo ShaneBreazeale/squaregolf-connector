@@ -25,6 +25,8 @@ const events = document.querySelector("#events");
 const baseUrl = new URL(window.location.href);
 const defaultApiPort = baseUrl.searchParams.get("apiPort") || "8080";
 let apiBase = `http://127.0.0.1:${defaultApiPort}`;
+let socket = null;
+let refreshStarted = false;
 
 function setApiBase(url) {
   apiBase = url;
@@ -93,6 +95,10 @@ async function callApi(path, options = {}) {
   return response.json();
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function refresh() {
   const status = await callApi("/api/status");
   renderStatus(status);
@@ -100,13 +106,16 @@ async function refresh() {
 }
 
 function connectWebSocket() {
+  if (socket && socket.readyState < WebSocket.CLOSING) return;
   const wsBase = apiBase.replace(/^http/, "ws");
-  const socket = new WebSocket(`${wsBase}/ws`);
+  socket = new WebSocket(`${wsBase}/ws`);
   socket.addEventListener("open", () => addEvent("UI websocket connected"));
   socket.addEventListener("close", () => {
     addEvent("UI websocket disconnected; retrying");
+    socket = null;
     setTimeout(connectWebSocket, 1000);
   });
+  socket.addEventListener("error", () => addEvent("UI websocket error"));
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
     if (message.type === "status") {
@@ -115,79 +124,106 @@ function connectWebSocket() {
   });
 }
 
+async function startApiSession() {
+  if (refreshStarted) return;
+  refreshStarted = true;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await refresh();
+      connectWebSocket();
+      return;
+    } catch (error) {
+      const message = error?.message || "Load failed";
+      addEvent(attempt === 1 ? message : `${message}; retrying`);
+      await sleep(Math.min(5000, 300 * attempt));
+    }
+  }
+}
+
+async function runAction(label, action) {
+  try {
+    await action();
+    addEvent(label);
+  } catch (error) {
+    addEvent(`${label} failed: ${error?.message || "Load failed"}`);
+  }
+}
+
+function postJson(path, body = undefined) {
+  return callApi(path, {
+    method: "POST",
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
+
+function toPort(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 document.querySelector("#connect-device").addEventListener("click", async () => {
-  await callApi("/api/device/connect", { method: "POST" });
-  addEvent("device connect requested");
+  await runAction("device connect requested", () => postJson("/api/device/connect"));
 });
 
 document.querySelector("#disconnect-device").addEventListener("click", async () => {
-  await callApi("/api/device/disconnect", { method: "POST" });
-  addEvent("device disconnect requested");
+  await runAction("device disconnect requested", () => postJson("/api/device/disconnect"));
 });
 
 squarelaunchForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await callApi("/api/config", {
-    method: "POST",
-    body: JSON.stringify({
+  await runAction("SquareLaunch config saved", () =>
+    postJson("/api/config", {
       squarelaunchEnabled: squarelaunchEnabled.checked,
       squarelaunchWsHost: squarelaunchHost.value,
-      squarelaunchWsPort: Number(squarelaunchPort.value),
+      squarelaunchWsPort: toPort(squarelaunchPort.value),
     }),
-  });
-  addEvent("SquareLaunch config saved");
+  );
 });
 
 gsproForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await callApi("/api/config", {
-    method: "POST",
-    body: JSON.stringify({
+  await runAction("GSPro config saved", () =>
+    postJson("/api/config", {
       gsproEnabled: gsproEnabled.checked,
       gsproHost: gsproHost.value,
-      gsproPort: Number(gsproPort.value),
+      gsproPort: toPort(gsproPort.value),
     }),
-  });
-  addEvent("GSPro config saved");
+  );
 });
 
 document.querySelector("#connect-gspro").addEventListener("click", async () => {
-  await callApi("/api/gspro/connect", { method: "POST" });
-  addEvent("GSPro connect requested");
+  await runAction("GSPro connect requested", () => postJson("/api/gspro/connect"));
 });
 
 document.querySelector("#disconnect-gspro").addEventListener("click", async () => {
-  await callApi("/api/gspro/disconnect", { method: "POST" });
-  addEvent("GSPro disconnect requested");
+  await runAction("GSPro disconnect requested", () => postJson("/api/gspro/disconnect"));
 });
 
 itForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await callApi("/api/config", {
-    method: "POST",
-    body: JSON.stringify({
+  await runAction("Infinite Tees config saved", () =>
+    postJson("/api/config", {
       infiniteTeesEnabled: itEnabled.checked,
       infiniteTeesHost: itHost.value,
-      infiniteTeesPort: Number(itPort.value),
+      infiniteTeesPort: toPort(itPort.value),
     }),
-  });
-  addEvent("Infinite Tees config saved");
+  );
 });
 
 document.querySelector("#connect-it").addEventListener("click", async () => {
-  await callApi("/api/infinitetees/connect", { method: "POST" });
-  addEvent("Infinite Tees connect requested");
+  await runAction("Infinite Tees connect requested", () => postJson("/api/infinitetees/connect"));
 });
 
 document.querySelector("#disconnect-it").addEventListener("click", async () => {
-  await callApi("/api/infinitetees/disconnect", { method: "POST" });
-  addEvent("Infinite Tees disconnect requested");
+  await runAction("Infinite Tees disconnect requested", () =>
+    postJson("/api/infinitetees/disconnect"),
+  );
 });
 
 window.__TAURI__?.event?.listen?.("api-ready", (event) => {
   setApiBase(event.payload);
-  refresh().then(connectWebSocket).catch((error) => addEvent(error.message));
+  startApiSession();
 });
 
 setApiBase(apiBase);
-refresh().then(connectWebSocket).catch((error) => addEvent(error.message));
+startApiSession();
