@@ -85,10 +85,7 @@ function renderStatus(status) {
 }
 
 async function callApi(path, options = {}) {
-  const response = await fetch(`${apiBase}${path}`, {
-    headers: { "content-type": "application/json" },
-    ...options,
-  });
+  const response = await fetch(`${apiBase}${path}`, options);
   if (!response.ok) {
     throw new Error(`${path} failed with ${response.status}`);
   }
@@ -152,7 +149,8 @@ async function runAction(label, action) {
 function postJson(path, body = undefined) {
   return callApi(path, {
     method: "POST",
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body ?? {}),
   });
 }
 

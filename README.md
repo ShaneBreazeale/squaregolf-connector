@@ -20,6 +20,7 @@ Nova-style websocket launch-monitor source named SquareLaunch.
 ## Requirements
 
 - Rust stable
+- Node.js 18 or newer for the black-box emulator script
 - macOS or Windows
 - Bluetooth adapter for SquareGolf hardware
 - `cargo-tauri` for desktop app bundling
@@ -170,6 +171,19 @@ Check all Rust binaries:
 
 ```sh
 cargo check --manifest-path src-tauri/Cargo.toml --bins
+```
+
+Run the black-box connector emulator against a running API:
+
+```sh
+cargo run --manifest-path src-tauri/Cargo.toml --bin squaregolf-api
+scripts/emulate-connector.mjs
+```
+
+Use a custom API URL when needed:
+
+```sh
+SQUAREGOLF_API_BASE=http://127.0.0.1:5177 scripts/emulate-connector.mjs
 ```
 
 Format the Rust code:

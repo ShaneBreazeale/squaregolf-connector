@@ -1,5 +1,6 @@
 use std::net::{Ipv4Addr, SocketAddr};
 
+use axum::body::Bytes;
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{State, WebSocketUpgrade};
 use axum::http::StatusCode;
@@ -204,11 +205,20 @@ async fn get_status(State(state): State<ApiState>) -> Json<AppStatus> {
     request_body = DeviceConnectRequest,
     responses((status = ACCEPTED, body = ActionAccepted))
 )]
-async fn connect_device(
-    State(state): State<ApiState>,
-    request: Option<Json<DeviceConnectRequest>>,
-) -> impl IntoResponse {
-    let request = request.map(|Json(request)| request).unwrap_or_default();
+async fn connect_device(State(state): State<ApiState>, body: Bytes) -> impl IntoResponse {
+    let request = if body.is_empty() {
+        DeviceConnectRequest::default()
+    } else {
+        match serde_json::from_slice::<DeviceConnectRequest>(&body) {
+            Ok(request) => request,
+            Err(_) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ActionAccepted { accepted: false }),
+                );
+            }
+        }
+    };
     state
         .device
         .connect(DeviceConnectOptions {
