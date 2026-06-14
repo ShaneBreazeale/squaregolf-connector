@@ -170,3 +170,7 @@ assert.deepEqual(
   ["GET /api/status", "POST /api/device/connect", "GET /api/status"],
 );
 assert.equal(elements["#device-status"].textContent, "scanning");
+assert(
+  elements["#events"].children.some((item) => item.textContent.includes("Device scanning")),
+  "expected device scanning event",
+);

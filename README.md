@@ -186,6 +186,17 @@ Use a custom API URL when needed:
 SQUAREGOLF_API_BASE=http://127.0.0.1:5177 scripts/emulate-connector.mjs
 ```
 
+Run a local SquareLaunch-compatible launch monitor emulator and send sample
+shots into the running connector:
+
+```sh
+SQUAREGOLF_API_BASE=http://127.0.0.1:5177 scripts/emulate-square-lm.mjs
+```
+
+The emulator starts a websocket server, saves the SquareLaunch host and port
+through the API, sends three sample shots after the connector connects, and then
+lets you press Enter to send more shots.
+
 Format the Rust code:
 
 ```sh

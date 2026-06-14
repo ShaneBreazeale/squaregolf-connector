@@ -1,9 +1,11 @@
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
+use futures_util::SinkExt;
 use squaregolf_connector::api;
 use squaregolf_connector::config::{AppConfig, ConfigStore};
 use squaregolf_connector::core::protocol::parser::parse_shot_ball_metrics;
 use squaregolf_connector::core::{AppState, ConnectionStatus};
+use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -168,6 +170,79 @@ async fn config_endpoint_persists_updated_settings_when_store_is_configured() {
     assert_eq!(cfg.squarelaunch_ws_port, 2921);
 
     let _ = std::fs::remove_file(path);
+}
+
+#[tokio::test]
+async fn config_endpoint_starts_squarelaunch_runtime_for_updated_endpoint() {
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+        socket
+            .send(WsMessage::Text(
+                r#"{
+                    "type": "shot",
+                    "timestamp_ns": 1710000000000000000,
+                    "shot_number": 9001,
+                    "ball_speed_meters_per_second": 62.5,
+                    "vertical_launch_angle_degrees": 12.8,
+                    "horizontal_launch_angle_degrees": -1.4,
+                    "total_spin_rpm": 2840.0,
+                    "spin_axis_degrees": -6.5
+                }"#
+                .into(),
+            ))
+            .await
+            .unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    });
+    let app = api::router(AppState::new(&AppConfig::default()));
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/config")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(
+                    r#"{{
+                        "squarelaunchEnabled": true,
+                        "squarelaunchWsHost": "127.0.0.1",
+                        "squarelaunchWsPort": {port}
+                    }}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+
+    for _ in 0..20 {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/status")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        if json["squarelaunch"]["lastShotNumber"] == 9001 {
+            assert_eq!(json["squarelaunch"]["connectionStatus"], "connected");
+            server.await.unwrap();
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    panic!("SquareLaunch runtime did not receive test shot");
 }
 
 #[tokio::test]

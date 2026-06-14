@@ -27,6 +27,7 @@ const defaultApiPort = baseUrl.searchParams.get("apiPort") || "8080";
 let apiBase = `http://127.0.0.1:${defaultApiPort}`;
 let socket = null;
 let refreshStarted = false;
+let lastDeviceStatus = null;
 
 function setApiBase(url) {
   if (apiBase !== url) {
@@ -58,7 +59,20 @@ function setStatusClass(element, value) {
   if (normalized === "error") element.classList.add("error");
 }
 
+function formatDeviceStatusEvent(device) {
+  const status = device.connectionStatus || "unknown";
+  if (status === "error" && device.lastError) {
+    return `Device error: ${device.lastError}`;
+  }
+  return `Device ${status}`;
+}
+
 function renderStatus(status) {
+  if (lastDeviceStatus && lastDeviceStatus !== status.device.connectionStatus) {
+    addEvent(formatDeviceStatusEvent(status.device));
+  }
+  lastDeviceStatus = status.device.connectionStatus;
+
   deviceStatusEl.textContent = status.device.connectionStatus;
   setStatusClass(deviceStatusEl, status.device.connectionStatus);
   deviceNameEl.textContent = status.device.deviceName || "No device";

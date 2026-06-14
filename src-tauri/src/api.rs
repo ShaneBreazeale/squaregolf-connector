@@ -19,7 +19,7 @@ use crate::config::{AppConfig, ConfigStore};
 use crate::core::{AppState, AppStatus, UiEvent};
 use crate::device::runtime::{DeviceConnectOptions, DeviceRuntime};
 use crate::simulator::runtime::SimulatorRuntime;
-use crate::squarelaunch;
+use crate::squarelaunch::runtime::SquareLaunchRuntime;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -87,6 +87,7 @@ pub struct ApiState {
     app: AppState,
     device: DeviceRuntime,
     simulators: SimulatorRuntime,
+    squarelaunch: SquareLaunchRuntime,
     config_store: Option<ConfigStore>,
 }
 
@@ -122,9 +123,11 @@ where
     config.api_port = addr.port();
 
     let state = AppState::new(&config);
-    squarelaunch::runtime::spawn(config.clone(), state.clone());
+    let simulators = SimulatorRuntime::new(state.clone());
+    let squarelaunch = SquareLaunchRuntime::new(state.clone());
+    squarelaunch.configure(config.clone()).await;
 
-    let router = router_with_store(state, config_store);
+    let router = router_with_runtimes_and_store(state, simulators, squarelaunch, config_store);
 
     ready(addr)?;
     tracing::info!("API server listening on http://{addr}");
@@ -180,10 +183,21 @@ pub fn router_with_simulators_and_store(
     simulators: SimulatorRuntime,
     config_store: Option<ConfigStore>,
 ) -> Router {
+    let squarelaunch = SquareLaunchRuntime::new(state.clone());
+    router_with_runtimes_and_store(state, simulators, squarelaunch, config_store)
+}
+
+fn router_with_runtimes_and_store(
+    state: AppState,
+    simulators: SimulatorRuntime,
+    squarelaunch: SquareLaunchRuntime,
+    config_store: Option<ConfigStore>,
+) -> Router {
     let api_state = ApiState {
         app: state.clone(),
         device: DeviceRuntime::new(state, simulators.clone()),
         simulators,
+        squarelaunch,
         config_store,
     };
     Router::new()
@@ -263,8 +277,12 @@ async fn save_current_config(state: &ApiState) -> Result<(), String> {
     let Some(store) = &state.config_store else {
         return Ok(());
     };
+    store.save(&current_config(state).await)
+}
+
+async fn current_config(state: &ApiState) -> AppConfig {
     let status = state.app.status().await;
-    store.save(&AppConfig {
+    AppConfig {
         api_port: status.api_port,
         gspro_host: status.gspro.host,
         gspro_port: status.gspro.port,
@@ -275,7 +293,7 @@ async fn save_current_config(state: &ApiState) -> Result<(), String> {
         squarelaunch_ws_host: status.squarelaunch.host,
         squarelaunch_ws_port: status.squarelaunch.port,
         squarelaunch_enabled: status.squarelaunch.enabled,
-    })
+    }
 }
 
 #[utoipa::path(
@@ -371,19 +389,7 @@ async fn disconnect_infinite_tees(State(state): State<ApiState>) -> impl IntoRes
     responses((status = OK, body = AppConfig))
 )]
 async fn get_config(State(state): State<ApiState>) -> Json<AppConfig> {
-    let status = state.app.status().await;
-    Json(AppConfig {
-        api_port: status.api_port,
-        gspro_host: status.gspro.host,
-        gspro_port: status.gspro.port,
-        gspro_enabled: status.gspro.enabled,
-        infinite_tees_host: status.infinite_tees.host,
-        infinite_tees_port: status.infinite_tees.port,
-        infinite_tees_enabled: status.infinite_tees.enabled,
-        squarelaunch_ws_host: status.squarelaunch.host,
-        squarelaunch_ws_port: status.squarelaunch.port,
-        squarelaunch_enabled: status.squarelaunch.enabled,
-    })
+    Json(current_config(&state).await)
 }
 
 #[utoipa::path(
@@ -397,6 +403,10 @@ async fn update_config(
     State(state): State<ApiState>,
     Json(update): Json<ConfigUpdate>,
 ) -> impl IntoResponse {
+    let squarelaunch_updated = update.squarelaunch_enabled.is_some()
+        || update.squarelaunch_ws_host.is_some()
+        || update.squarelaunch_ws_port.is_some();
+
     if update.gspro_enabled.is_some() || update.gspro_host.is_some() || update.gspro_port.is_some()
     {
         state
@@ -454,6 +464,12 @@ async fn update_config(
             }
         })
         .await;
+    if squarelaunch_updated {
+        state
+            .squarelaunch
+            .configure(current_config(&state).await)
+            .await;
+    }
     match save_current_config(&state).await {
         Ok(()) => (
             StatusCode::ACCEPTED,
