@@ -27,6 +27,7 @@ use crate::squarelaunch::runtime::SquareLaunchRuntime;
         health,
         get_status,
         connect_device,
+        emulate_device_notification,
         disconnect_device,
         connect_gspro,
         disconnect_gspro,
@@ -45,6 +46,7 @@ use crate::squarelaunch::runtime::SquareLaunchRuntime;
         crate::core::SquareLaunchStatus,
         ConfigUpdate,
         DeviceConnectRequest,
+        DeviceEmulatorNotificationRequest,
         ActionAccepted,
     )),
     tags(
@@ -80,6 +82,13 @@ pub struct ConfigUpdate {
 pub struct DeviceConnectRequest {
     pub device_name: Option<String>,
     pub device_address: Option<String>,
+    pub emulator: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceEmulatorNotificationRequest {
+    pub bytes: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -204,6 +213,10 @@ fn router_with_runtimes_and_store(
         .route("/api/health", get(health))
         .route("/api/status", get(get_status))
         .route("/api/device/connect", post(connect_device))
+        .route(
+            "/api/device/emulator/notify",
+            post(emulate_device_notification),
+        )
         .route("/api/device/disconnect", post(disconnect_device))
         .route("/api/gspro/connect", post(connect_gspro))
         .route("/api/gspro/disconnect", post(disconnect_gspro))
@@ -265,8 +278,43 @@ async fn connect_device(State(state): State<ApiState>, body: Bytes) -> impl Into
         .connect(DeviceConnectOptions {
             device_name: request.device_name,
             device_address: request.device_address,
+            emulator: request.emulator.unwrap_or(false),
         })
         .await;
+    (
+        StatusCode::ACCEPTED,
+        Json(ActionAccepted { accepted: true }),
+    )
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/device/emulator/notify",
+    tag = "device",
+    request_body = DeviceEmulatorNotificationRequest,
+    responses(
+        (status = ACCEPTED, body = ActionAccepted),
+        (status = BAD_REQUEST, body = ActionAccepted)
+    )
+)]
+async fn emulate_device_notification(
+    State(state): State<ApiState>,
+    Json(request): Json<DeviceEmulatorNotificationRequest>,
+) -> impl IntoResponse {
+    let mut bytes = Vec::with_capacity(request.bytes.len());
+    for byte in request.bytes {
+        let trimmed = byte.trim().trim_start_matches("0x");
+        match u8::from_str_radix(trimmed, 16) {
+            Ok(value) => bytes.push(value),
+            Err(_) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ActionAccepted { accepted: false }),
+                );
+            }
+        }
+    }
+    state.device.emulate_notification(&bytes).await;
     (
         StatusCode::ACCEPTED,
         Json(ActionAccepted { accepted: true }),

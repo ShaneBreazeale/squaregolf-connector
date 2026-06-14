@@ -68,8 +68,9 @@ embedded API server.
 
 ## SquareLaunch WebSocket
 
-SquareLaunch is the connector's Nova-style websocket launch monitor mode. It
-accepts JSON shot messages like this:
+SquareLaunch is the connector's Nova-style websocket output mode for clients
+that consume launch monitor data from the connector. It uses JSON shot messages
+like this:
 
 ```json
 {
@@ -186,16 +187,15 @@ Use a custom API URL when needed:
 SQUAREGOLF_API_BASE=http://127.0.0.1:5177 scripts/emulate-connector.mjs
 ```
 
-Run a local SquareLaunch-compatible launch monitor emulator and send sample
-shots into the running connector:
+Run a fake SquareGolf launch monitor device and send sample shots into the
+running connector:
 
 ```sh
 SQUAREGOLF_API_BASE=http://127.0.0.1:5177 scripts/emulate-square-lm.mjs
 ```
 
-The emulator starts a websocket server, saves the SquareLaunch host and port
-through the API, sends three sample shots after the connector connects, and then
-lets you press Enter to send more shots.
+The emulator connects through the Device panel path, sends three raw SquareGolf
+notification samples, and then lets you press Enter to send more shots.
 
 Format the Rust code:
 

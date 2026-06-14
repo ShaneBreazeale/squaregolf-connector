@@ -35,6 +35,7 @@ struct DeviceInner {
 pub struct DeviceConnectOptions {
     pub device_name: Option<String>,
     pub device_address: Option<String>,
+    pub emulator: bool,
 }
 
 impl DeviceRuntime {
@@ -48,6 +49,22 @@ impl DeviceRuntime {
 
     pub async fn connect(&self, options: DeviceConnectOptions) {
         self.disconnect().await;
+
+        if options.emulator {
+            self.state
+                .update_device(|status| {
+                    status.connection_status = ConnectionStatus::Connected;
+                    status.device_name = Some(
+                        options
+                            .device_name
+                            .unwrap_or_else(|| "SquareGolf Emulator".to_string()),
+                    );
+                    status.battery_level = Some(100);
+                    status.last_error = None;
+                })
+                .await;
+            return;
+        }
 
         let (stop_tx, stop_rx) = oneshot::channel();
         self.state
@@ -91,6 +108,10 @@ impl DeviceRuntime {
                 status.battery_level = None;
             })
             .await;
+    }
+
+    pub async fn emulate_notification(&self, value: &[u8]) {
+        handle_squaregolf_notification(&self.state, &self.simulators, value).await;
     }
 }
 

@@ -246,6 +246,63 @@ async fn config_endpoint_starts_squarelaunch_runtime_for_updated_endpoint() {
 }
 
 #[tokio::test]
+async fn emulator_device_connect_accepts_squaregolf_notifications() {
+    let app = api::router(AppState::new(&AppConfig::default()));
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/device/connect")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"emulator": true}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/device/emulator/notify")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{
+                        "bytes": [
+                            "11", "02", "37", "64", "00", "C8", "00", "2C", "01",
+                            "E8", "03", "F4", "01", "D0", "07", "B8", "0B"
+                        ]
+                    }"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/status")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["device"]["connectionStatus"], "connected");
+    assert_eq!(json["device"]["deviceName"], "SquareGolf Emulator");
+    assert_eq!(json["device"]["lastBallMetrics"]["speedMps"], 1.0);
+    assert_eq!(json["device"]["lastBallMetrics"]["launchAngle"], 2.0);
+    assert_eq!(json["device"]["lastBallMetrics"]["totalSpin"], 1000.0);
+}
+
+#[tokio::test]
 async fn device_disconnect_endpoint_clears_connected_device_state() {
     let state = AppState::new(&AppConfig::default());
     state
