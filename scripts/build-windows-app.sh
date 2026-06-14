@@ -7,56 +7,29 @@ BUILD_DIR="$ROOT_DIR/build"
 APP_NAME="SquareGolf Connector"
 APP_DIR="$BUILD_DIR/$APP_NAME"
 EXE_NAME="SquareGolf Connector.exe"
-SYSO_PATH="$ROOT_DIR/rsrc_windows_amd64.syso"
 
-VERSION="${1:-}"
-if [[ -z "$VERSION" ]]; then
-    VERSION="$(grep -E 'Version = "' "$ROOT_DIR/internal/version/version.go" | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')"
-fi
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) ;;
+    *)
+        echo "This script must be run on Windows with a Rust/Tauri toolchain." >&2
+        exit 1
+        ;;
+esac
 
-VERSION="${VERSION#v}"
-NUMERIC_VERSION="$(echo "$VERSION" | sed -E 's/-.*$//')"
-IFS='.' read -r MAJOR MINOR PATCH <<<"$NUMERIC_VERSION"
-MAJOR="${MAJOR:-0}"
-MINOR="${MINOR:-0}"
-PATCH="${PATCH:-0}"
-COMMA_VERSION="${MAJOR},${MINOR},${PATCH},0"
-
-rm -rf "$APP_DIR" "$SYSO_PATH"
+rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR"
 
-if ! command -v windres >/dev/null 2>&1; then
-    echo "windres is required to build the Windows resource file" >&2
+cargo build \
+    --manifest-path "$ROOT_DIR/src-tauri/Cargo.toml" \
+    --release \
+    --bin squaregolf-connector
+
+SOURCE_EXE="$ROOT_DIR/src-tauri/target/release/squaregolf-connector.exe"
+if [[ ! -f "$SOURCE_EXE" ]]; then
+    echo "Rust app executable was not produced at $SOURCE_EXE" >&2
     exit 1
 fi
 
-RC_STAGE_DIR="$BUILD_DIR/rc-stage"
-rm -rf "$RC_STAGE_DIR"
-mkdir -p "$RC_STAGE_DIR"
-
-sed \
-    -e "s|@APP_VERSION_COMMA@|${COMMA_VERSION}|g" \
-    -e "s|@APP_VERSION_STRING@|${VERSION}|g" \
-    "$ROOT_DIR/windows/app.rc" > "$RC_STAGE_DIR/app.rc"
-
-cp "$ROOT_DIR/windows/icon.ico" "$RC_STAGE_DIR/icon.ico"
-
-(cd "$RC_STAGE_DIR" && windres app.rc -O coff -o "$SYSO_PATH")
-
-rm -rf "$RC_STAGE_DIR"
-
-export GOOS=windows
-export GOARCH=amd64
-export CGO_ENABLED=1
-
-go build \
-    -trimpath \
-    -ldflags "-H windowsgui -s -w" \
-    -o "$APP_DIR/$EXE_NAME" \
-    "$ROOT_DIR/main.go"
-
-rm -f "$SYSO_PATH"
-
-cp -R "$ROOT_DIR/web" "$APP_DIR/web"
+cp "$SOURCE_EXE" "$APP_DIR/$EXE_NAME"
 
 echo "Built $APP_DIR/$EXE_NAME"

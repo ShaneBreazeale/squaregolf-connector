@@ -11,3 +11,5 @@ squaregolf-connector
 squaregolf-connector.exe
 *.syso
 tmp/
+src-tauri/target/
+src-tauri/gen/

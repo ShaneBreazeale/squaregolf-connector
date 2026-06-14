@@ -1,119 +1,193 @@
 # SquareGolf Connector
 
-An unofficial launch monitor connector for SquareGolf devices with GSPro integration.
-
-## Download And Run (macOS)
-
-1. Open the [latest release](https://github.com/brentyates/squaregolf-connector/releases/latest).
-2. Download the macOS zip file: `SquareGolf-Connector-<version>-macOS.zip`.
-3. Unzip it.
-4. Drag `SquareGolf Connector.app` into `Applications` if you want.
-5. Open `SquareGolf Connector.app`.
-
-When the app is running, it opens its own desktop window. Closing the window shuts the app down.
-
-## Download And Run (Windows)
-
-1. Open the [latest release](https://github.com/brentyates/squaregolf-connector/releases/latest).
-2. Download the Windows zip file: `SquareGolf-Connector-<version>-Windows.zip`.
-3. Unzip it. You will get a `SquareGolf Connector` folder with the app executable and a `web` folder next to it. Keep them together.
-4. Open the folder and double-click `SquareGolf Connector.exe`.
-
-Windows 10 or 11 is required. The app uses the built-in Microsoft Edge WebView2 runtime, which ships with recent versions of Windows. If the window does not open, install the [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
-
-The first time you launch, Windows SmartScreen may warn that the app is from an unidentified developer. Click `More info`, then `Run anyway`.
-
-## First Launch On macOS
-
-Because this app is not signed with a paid Apple Developer ID, macOS may block it the first time you open it.
-
-You may see a message like:
-
-- `"SquareGolf Connector.app" can't be opened because Apple could not verify it for malware`
-- `"SquareGolf Connector.app" is from an unidentified developer`
-
-If that happens, do this:
-
-1. Try to open `SquareGolf Connector.app` once, then close the warning message.
-2. Right-click `SquareGolf Connector.app` and choose `Open`.
-3. Click `Open` in the confirmation dialog.
-4. If macOS still blocks it, open `System Settings`.
-5. Go to `Privacy & Security`.
-6. Scroll down until you see the message about `SquareGolf Connector`.
-7. Click `Open Anyway`.
-8. If macOS asks again, click `Open`.
-
-You usually only need to do this once.
-
-## What It Does
-
-SquareGolf Connector connects to SquareGolf Bluetooth launch monitors and provides:
-
-- **Bluetooth connectivity** to SquareGolf devices
-- **GSPro integration** with automatic reconnection
-- **Desktop window UI** powered by the existing web frontend
-- **External camera integration** (experimental)
-- **Persistent saved settings**
+SquareGolf Connector is an unofficial Rust/Tauri desktop connector for
+SquareGolf launch monitors. It exposes a local OpenAPI server, a desktop control
+panel, GSPro/Open Connect integrations, Infinite Tees integration, and a
+Nova-style websocket launch-monitor source named SquareLaunch.
 
 ## Features
 
-- Real-time ball and club metrics
-- Battery monitoring
-- Device alignment tracking
-- Ball detection and position tracking
-- Configurable club selection and handedness
-- Persistent settings storage
-- Auto-connect functionality
+- Native Tauri desktop UI with a Rust backend
+- Configurable local OpenAPI server with Swagger UI
+- SquareGolf Bluetooth LE device runtime
+- GSPro and Infinite Tees TCP integrations
+- SquareLaunch WebSocket shot source with `_openlaunch-ws._tcp.local.` discovery
+- Persistent user settings in `~/.squaregolf-connector/config.json`
+- Headless API binary for automation and smoke testing
 
 ## Requirements
 
-- **macOS** or **Windows 10/11** for the ready-to-download app releases
-- Bluetooth adapter
-- A SquareGolf launch monitor for normal use
+- Rust stable
+- macOS or Windows
+- Bluetooth adapter for SquareGolf hardware
+- `cargo-tauri` for desktop app bundling
 
-## Quick Start
+Install the Tauri CLI when you need to build bundles:
 
-1. Launch `SquareGolf Connector.app`.
-2. Turn on your SquareGolf device.
-3. Open GSPro if you use it.
-4. In the app, connect to your device.
-5. If needed, connect GSPro from the app settings.
+```sh
+cargo install tauri-cli --version '^2'
+```
 
-## Troubleshooting
+## Run The OpenAPI Server
 
-### macOS says the app cannot be opened
+Start the headless API server:
 
-1. Try to open the app once and close the warning.
-2. Right-click the app and choose `Open`.
-3. Click `Open`.
-4. If it is still blocked, open `System Settings` -> `Privacy & Security` and click `Open Anyway`.
+```sh
+cargo run --manifest-path src-tauri/Cargo.toml --bin squaregolf-api -- --api-port 5177
+```
 
-### Cannot connect to Bluetooth device
+Open these local URLs:
 
-- Ensure your Bluetooth adapter is enabled
-- Make sure your SquareGolf device is turned on
-- Move the device closer to your Mac
+- Status: `http://127.0.0.1:5177/api/status`
+- OpenAPI JSON: `http://127.0.0.1:5177/api-docs/openapi.json`
+- Swagger UI: `http://127.0.0.1:5177/swagger-ui`
 
-### GSPro not receiving data
+The API port defaults to `8080`. Override it with either:
 
-- Make sure GSPro is open
-- Check the connection settings in the app
-- Enable auto-reconnect in settings
+```sh
+cargo run --manifest-path src-tauri/Cargo.toml --bin squaregolf-api -- --api-port 5177
+```
 
-### App window opens but looks blank or broken
+```sh
+SQUAREGOLF_API_PORT=5177 cargo run --manifest-path src-tauri/Cargo.toml --bin squaregolf-api
+```
 
-- Quit the app and open it again
-- Download the latest release from GitHub
-- If the problem continues, open an issue on GitHub
+## Run The Tauri App
 
-## License
+Start the desktop shell during development:
 
-See [LICENSE](LICENSE) file for details.
+```sh
+cargo run --manifest-path src-tauri/Cargo.toml --bin squaregolf-connector -- --api-port 5177
+```
 
-## Contributing
+The Tauri window loads the static frontend from `frontend/` and connects to the
+embedded API server.
 
-Contributions are welcome! Please open an issue or submit a pull request.
+## SquareLaunch WebSocket
+
+SquareLaunch is the connector's Nova-style websocket launch monitor mode. It
+accepts JSON shot messages like this:
+
+```json
+{
+  "type": "shot",
+  "shot_number": 42,
+  "ball_speed_meters_per_second": 65.9,
+  "vertical_launch_angle_degrees": 13.4,
+  "horizontal_launch_angle_degrees": -2.1,
+  "total_spin_rpm": 3120.0,
+  "spin_axis_degrees": -9.5
+}
+```
+
+Enable SquareLaunch with automatic OpenLaunch-compatible mDNS discovery:
+
+```sh
+cargo run --manifest-path src-tauri/Cargo.toml --bin squaregolf-api -- \
+  --enable-squarelaunch-ws
+```
+
+Or use a fixed websocket endpoint:
+
+```sh
+cargo run --manifest-path src-tauri/Cargo.toml --bin squaregolf-api -- \
+  --enable-squarelaunch-ws \
+  --squarelaunch-ws-host 127.0.0.1 \
+  --squarelaunch-ws-port 2920
+```
+
+Environment equivalents:
+
+```sh
+SQUARELAUNCH_WS=1
+SQUARELAUNCH_WS_HOST=127.0.0.1
+SQUARELAUNCH_WS_PORT=2920
+```
+
+## Simulator Integrations
+
+GSPro and Infinite Tees settings can be configured from the UI or the API.
+Startup overrides are also available:
+
+```sh
+cargo run --manifest-path src-tauri/Cargo.toml --bin squaregolf-api -- \
+  --enable-gspro \
+  --gspro-host 127.0.0.1 \
+  --gspro-port 921 \
+  --enable-it \
+  --it-host 127.0.0.1 \
+  --it-port 999
+```
+
+Environment equivalents:
+
+```sh
+GSPRO_ENABLED=1
+GSPRO_HOST=127.0.0.1
+GSPRO_PORT=921
+INFINITE_TEES_ENABLED=1
+INFINITE_TEES_HOST=127.0.0.1
+INFINITE_TEES_PORT=999
+```
+
+## Build Releases
+
+Build a macOS Tauri app bundle:
+
+```sh
+scripts/build-macos-app.sh
+```
+
+Create the macOS release zip:
+
+```sh
+scripts/package-macos-release.sh 0.3.0-alpha.0
+```
+
+Build the Windows executable folder on Windows:
+
+```sh
+scripts/build-windows-app.sh
+```
+
+Create the Windows release zip on Windows:
+
+```sh
+scripts/package-windows-release.sh 0.3.0-alpha.0
+```
+
+## Development
+
+Run the Rust test suite:
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
+Check all Rust binaries:
+
+```sh
+cargo check --manifest-path src-tauri/Cargo.toml --bins
+```
+
+Format the Rust code:
+
+```sh
+cargo fmt --manifest-path src-tauri/Cargo.toml
+```
+
+## Project Layout
+
+- `src-tauri/` - Rust backend, OpenAPI server, Tauri shell, protocol code, tests
+- `frontend/` - Static desktop frontend loaded by Tauri
+- `scripts/` - Release build and packaging scripts
+- `icon.png` - Source icon used to generate Tauri bundle icons
 
 ## Disclaimer
 
-This is an unofficial, community-developed connector and is not affiliated with or endorsed by SquareGolf.
+This is an unofficial community connector. It is not affiliated with or endorsed
+by SquareGolf, GSPro, Infinite Tees, or OpenLaunch.
+
+## License
+
+See [LICENSE](LICENSE).

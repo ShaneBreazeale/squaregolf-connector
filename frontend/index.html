@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SquareGolf Connector</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>SquareGolf Connector</h1>
+          <p id="api-url">API starting...</p>
+        </div>
+        <div class="topbar-actions">
+          <a id="openapi-link" href="#" target="_blank" rel="noreferrer">OpenAPI</a>
+          <a id="swagger-link" href="#" target="_blank" rel="noreferrer">Swagger</a>
+        </div>
+      </header>
+
+      <section class="status-grid">
+        <article class="panel">
+          <div class="panel-heading">
+            <h2>Device</h2>
+            <span id="device-status" class="status">Disconnected</span>
+          </div>
+          <dl>
+            <div>
+              <dt>Name</dt>
+              <dd id="device-name">No device</dd>
+            </div>
+            <div>
+              <dt>Battery</dt>
+              <dd id="device-battery">Unknown</dd>
+            </div>
+            <div>
+              <dt>Last shot</dt>
+              <dd id="device-shot">None</dd>
+            </div>
+          </dl>
+          <div class="button-row">
+            <button id="connect-device">Connect</button>
+            <button id="disconnect-device" class="secondary">Disconnect</button>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <h2>GSPro</h2>
+            <span id="gspro-status" class="status">Disabled</span>
+          </div>
+          <form id="gspro-form">
+            <label>
+              Host
+              <input id="gspro-host" autocomplete="off" />
+            </label>
+            <label>
+              Port
+              <input id="gspro-port" type="number" min="1" max="65535" />
+            </label>
+            <label class="toggle-row">
+              <input id="gspro-enabled" type="checkbox" />
+              Enabled
+            </label>
+            <div class="button-row">
+              <button type="submit">Save</button>
+              <button id="connect-gspro" type="button" class="secondary">Connect</button>
+              <button id="disconnect-gspro" type="button" class="secondary">Disconnect</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <h2>Infinite Tees</h2>
+            <span id="it-status" class="status">Disabled</span>
+          </div>
+          <form id="it-form">
+            <label>
+              Host
+              <input id="it-host" autocomplete="off" />
+            </label>
+            <label>
+              Port
+              <input id="it-port" type="number" min="1" max="65535" />
+            </label>
+            <label class="toggle-row">
+              <input id="it-enabled" type="checkbox" />
+              Enabled
+            </label>
+            <div class="button-row">
+              <button type="submit">Save</button>
+              <button id="connect-it" type="button" class="secondary">Connect</button>
+              <button id="disconnect-it" type="button" class="secondary">Disconnect</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <h2>SquareLaunch WebSocket</h2>
+            <span id="squarelaunch-status" class="status">Disabled</span>
+          </div>
+          <form id="squarelaunch-form">
+            <label>
+              Host
+              <input id="squarelaunch-host" autocomplete="off" placeholder="192.168.1.50" />
+            </label>
+            <label>
+              Port
+              <input id="squarelaunch-port" type="number" min="1" max="65535" />
+            </label>
+            <label class="toggle-row">
+              <input id="squarelaunch-enabled" type="checkbox" />
+              Enabled
+            </label>
+            <button type="submit">Save</button>
+          </form>
+        </article>
+      </section>
+
+      <section class="event-log">
+        <h2>Events</h2>
+        <ol id="events"></ol>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
