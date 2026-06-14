@@ -103,10 +103,12 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function refresh() {
+async function refresh({ log = true } = {}) {
   const status = await callApi("/api/status");
   renderStatus(status);
-  addEvent("status refreshed");
+  if (log) {
+    addEvent("status refreshed");
+  }
 }
 
 function connectWebSocket() {
@@ -165,6 +167,7 @@ async function startTauriApiSession() {
 async function runAction(label, action) {
   try {
     await action();
+    await refresh({ log: false });
     addEvent(label);
   } catch (error) {
     addEvent(`${label} failed: ${error?.message || "Load failed"}`);
