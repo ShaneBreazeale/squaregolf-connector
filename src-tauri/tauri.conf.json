@@ -1,6 +1,6 @@
 {
   "productName": "SquareGolf Connector",
-  "version": "0.3.0-alpha.0",
+  "version": "0.3.0",
   "identifier": "com.squaregolf.connector",
   "build": {
     "frontendDist": "../frontend"

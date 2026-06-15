@@ -3292,7 +3292,7 @@ dependencies = [
 
 [[package]]
 name = "squaregolf-connector"
-version = "0.3.0-alpha.0"
+version = "0.3.0"
 dependencies = [
  "alloc-stdlib",
  "axum",

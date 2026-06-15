@@ -1,6 +1,6 @@
 [package]
 name = "squaregolf-connector"
-version = "0.3.0-alpha.0"
+version = "0.3.0"
 description = "Unofficial SquareGolf connector with Tauri UI and OpenAPI server"
 authors = ["SquareGolf Connector contributors"]
 license = "MIT"
