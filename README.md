@@ -5,7 +5,13 @@ SquareGolf launch monitors. It exposes a local OpenAPI server, a desktop control
 panel, GSPro/Open Connect integrations, Infinite Tees integration, and a
 Nova-style websocket launch-monitor source named SquareLaunch.
 
-![SquareGolf Connector app screen](docs/app-screen.png)
+Pick one game/interface (GSPro OpenAPI, Infinite Tees, or the SquareLaunch
+WebSocket) and tune its port — the picker defaults to GSPro on Windows and the
+SquareLaunch WebSocket on macOS/Linux.
+
+| GSPro / OpenAPI | SquareLaunch / WebSocket |
+| --- | --- |
+| ![SquareGolf Connector GSPro view](docs/app-screen.png) | ![SquareGolf Connector SquareLaunch view](docs/app-websocket.png) |
 
 ## Features
 
