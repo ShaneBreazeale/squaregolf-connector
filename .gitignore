@@ -13,3 +13,4 @@ squaregolf-connector.exe
 tmp/
 src-tauri/target/
 src-tauri/gen/
+CLAUDE.md
