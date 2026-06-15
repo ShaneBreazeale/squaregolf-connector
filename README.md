@@ -23,13 +23,25 @@ SquareLaunch WebSocket on macOS/Linux.
 - Persistent user settings in `~/.squaregolf-connector/config.json`
 - Headless API binary for automation and smoke testing
 
+## Install
+
+Download the latest build for your platform from the
+[Releases page](https://github.com/ShaneBreazeale/squaregolf-connector/releases/latest):
+
+| Platform | Asset | Notes |
+| --- | --- | --- |
+| macOS (Apple Silicon) | `*_aarch64.dmg` | Open the DMG, drag to Applications. Unsigned, so first launch needs right-click → **Open** (or `xattr -dr com.apple.quarantine "/Applications/SquareGolf Connector.app"`). |
+| Windows (x64) | `*_x64-setup.exe` or `*_x64_en-US.msi` | Run the installer. SmartScreen may warn (unsigned) — **More info → Run anyway**. |
+| Linux (x86_64) | `*_amd64.AppImage` | `chmod +x` then run. `.deb` and `.rpm` packages are also attached. |
+
 ## Requirements
 
 - Rust stable
 - Node.js 18 or newer for the black-box emulator script
-- macOS or Windows
+- macOS, Windows, or Linux (x86_64; published macOS builds target Apple Silicon)
 - Bluetooth adapter for SquareGolf hardware
 - `cargo-tauri` for desktop app bundling
+- Linux only: `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `patchelf` (see the [release workflow](.github/workflows/release.yml) for the full apt list)
 
 Install the Tauri CLI when you need to build bundles:
 
@@ -142,6 +154,26 @@ INFINITE_TEES_PORT=999
 
 ## Build Releases
 
+### Tagged release (recommended)
+
+Pushing a `v*` tag triggers the [release workflow](.github/workflows/release.yml),
+which builds and publishes signed-less bundles for macOS (Apple Silicon), Linux
+x86_64, and Windows x64 via `tauri-action`:
+
+```sh
+# 1. Bump the version in src-tauri/Cargo.toml, src-tauri/Cargo.lock,
+#    and src-tauri/tauri.conf.json (keep them in sync).
+# 2. Commit, then tag and push:
+git tag v0.3.0
+git push origin v0.3.0
+```
+
+The workflow can also be started manually from the **Actions** tab
+(`workflow_dispatch`) with a tag input. Tags containing `-` (e.g.
+`v0.4.0-alpha.1`) publish as a pre-release.
+
+### Local bundles
+
 Build a macOS Tauri app bundle:
 
 ```sh
@@ -151,7 +183,7 @@ scripts/build-macos-app.sh
 Create the macOS release zip:
 
 ```sh
-scripts/package-macos-release.sh 0.3.0-alpha.0
+scripts/package-macos-release.sh 0.3.0
 ```
 
 Build the Windows executable folder on Windows:
@@ -163,7 +195,7 @@ scripts/build-windows-app.sh
 Create the Windows release zip on Windows:
 
 ```sh
-scripts/package-windows-release.sh 0.3.0-alpha.0
+scripts/package-windows-release.sh 0.3.0
 ```
 
 ## Development
@@ -174,10 +206,25 @@ Run the Rust test suite:
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
+Run the frontend contract test (a fake-DOM harness that guards
+`frontend/main.js`; add new queried element ids to its selector list when you
+change the UI):
+
+```sh
+node scripts/test-frontend-ui.mjs
+```
+
 Check all Rust binaries:
 
 ```sh
 cargo check --manifest-path src-tauri/Cargo.toml --bins
+```
+
+The frontend is static (no build step) — Tauri loads `frontend/` directly. For
+a live desktop shell with devtools use:
+
+```sh
+cargo tauri dev
 ```
 
 Run the black-box connector emulator against a running API:
@@ -212,8 +259,9 @@ cargo fmt --manifest-path src-tauri/Cargo.toml
 ## Project Layout
 
 - `src-tauri/` - Rust backend, OpenAPI server, Tauri shell, protocol code, tests
-- `frontend/` - Static desktop frontend loaded by Tauri
-- `scripts/` - Release build and packaging scripts
+- `frontend/` - Static desktop frontend loaded by Tauri (no build step)
+- `scripts/` - Release/packaging scripts, emulators, frontend contract test
+- `.github/workflows/` - Multi-platform release CI
 - `icon.png` - Source icon used to generate Tauri bundle icons
 
 ## Disclaimer
