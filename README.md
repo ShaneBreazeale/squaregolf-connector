@@ -11,7 +11,7 @@ SquareLaunch WebSocket on macOS/Linux.
 
 | GSPro / OpenAPI | SquareLaunch / WebSocket |
 | --- | --- |
-| ![SquareGolf Connector GSPro view](docs/app-screen.png) | ![SquareGolf Connector SquareLaunch view](docs/app-websocket.png) |
+| ![SquareGolf Connector GSPro view](docs/app-gspro.png) | ![SquareGolf Connector SquareLaunch view](docs/app-websocket.png) |
 
 ## Features
 
