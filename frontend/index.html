@@ -7,123 +7,157 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <header class="topbar">
-        <div>
-          <h1>SquareGolf Connector</h1>
-          <p id="api-url">API starting...</p>
+    <main class="app">
+      <header class="app-header">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <h1>SquareGolf</h1>
+            <p id="api-url" class="api-url">API starting…</p>
+          </div>
         </div>
-        <div class="topbar-actions">
+        <nav class="header-links">
           <a id="openapi-link" href="#" target="_blank" rel="noreferrer">OpenAPI</a>
           <a id="swagger-link" href="#" target="_blank" rel="noreferrer">Swagger</a>
-        </div>
+        </nav>
       </header>
 
-      <section class="status-grid">
-        <article class="panel">
-          <div class="panel-heading">
-            <h2>Device</h2>
-            <span id="device-status" class="status">Disconnected</span>
+      <!-- Device hero -->
+      <section id="device-card" class="device-card">
+        <div class="device-main">
+          <span id="device-dot" class="dot" aria-hidden="true"></span>
+          <div class="device-text">
+            <p id="device-name" class="device-name">No device</p>
+            <p class="device-meta">
+              <span id="device-status" class="device-state">Disconnected</span>
+              <span class="sep">·</span>
+              <span>Battery <strong id="device-battery">Unknown</strong></span>
+              <span class="sep">·</span>
+              <span>Last shot <strong id="device-shot">None</strong></span>
+            </p>
           </div>
-          <dl>
-            <div>
-              <dt>Name</dt>
-              <dd id="device-name">No device</dd>
-            </div>
-            <div>
-              <dt>Battery</dt>
-              <dd id="device-battery">Unknown</dd>
-            </div>
-            <div>
-              <dt>Last shot</dt>
-              <dd id="device-shot">None</dd>
-            </div>
-          </dl>
-          <div class="button-row">
-            <button id="connect-device">Connect</button>
-            <button id="disconnect-device" class="secondary">Disconnect</button>
-          </div>
-        </article>
+        </div>
+        <div class="device-actions">
+          <button id="connect-device" class="btn btn-primary">Connect</button>
+          <button id="disconnect-device" class="btn btn-ghost hidden">Disconnect</button>
+        </div>
+      </section>
 
-        <article class="panel">
-          <div class="panel-heading">
-            <h2>GSPro</h2>
-            <span id="gspro-status" class="status">Disabled</span>
+      <!-- Interface picker -->
+      <section class="interface">
+        <p class="section-label">Game / Interface</p>
+        <div id="interface-tabs" class="segmented" role="tablist">
+          <button class="interface-tab" data-interface="gspro" type="button" role="tab">
+            <span class="tab-title">GSPro</span>
+            <span class="tab-sub">OpenAPI</span>
+          </button>
+          <button class="interface-tab" data-interface="it" type="button" role="tab">
+            <span class="tab-title">Infinite Tees</span>
+            <span class="tab-sub">Game</span>
+          </button>
+          <button class="interface-tab" data-interface="squarelaunch" type="button" role="tab">
+            <span class="tab-title">SquareLaunch</span>
+            <span class="tab-sub">WebSocket</span>
+          </button>
+        </div>
+
+        <!-- GSPro / OpenAPI -->
+        <div class="panel interface-panel" data-interface="gspro">
+          <div class="panel-head">
+            <h2>GSPro <span class="muted">OpenAPI</span></h2>
+            <span id="gspro-status" class="pill">Disabled</span>
           </div>
-          <form id="gspro-form">
-            <label>
-              Host
-              <input id="gspro-host" autocomplete="off" />
+          <form id="gspro-form" class="config-form">
+            <label class="field">
+              <span>Host</span>
+              <input id="gspro-host" autocomplete="off" placeholder="127.0.0.1" />
             </label>
-            <label>
-              Port
+            <label class="field">
+              <span>Port</span>
               <input id="gspro-port" type="number" min="1" max="65535" />
             </label>
-            <label class="toggle-row">
-              <input id="gspro-enabled" type="checkbox" />
-              Enabled
-            </label>
-            <div class="button-row">
-              <button type="submit">Save</button>
-              <button id="connect-gspro" type="button" class="secondary">Connect</button>
-              <button id="disconnect-gspro" type="button" class="secondary">Disconnect</button>
+            <p id="gspro-port-warn" class="port-warn" hidden></p>
+            <div class="form-foot">
+              <label class="switch">
+                <input id="gspro-enabled" type="checkbox" />
+                <span class="track" aria-hidden="true"></span>
+                Enabled
+              </label>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button id="connect-gspro" type="button" class="btn btn-ghost">Connect</button>
+                <button id="disconnect-gspro" type="button" class="btn btn-ghost">Disconnect</button>
+              </div>
             </div>
           </form>
-        </article>
+        </div>
 
-        <article class="panel">
-          <div class="panel-heading">
-            <h2>Infinite Tees</h2>
-            <span id="it-status" class="status">Disabled</span>
+        <!-- Infinite Tees -->
+        <div class="panel interface-panel" data-interface="it" hidden>
+          <div class="panel-head">
+            <h2>Infinite Tees <span class="muted">Game</span></h2>
+            <span id="it-status" class="pill">Disabled</span>
           </div>
-          <form id="it-form">
-            <label>
-              Host
-              <input id="it-host" autocomplete="off" />
+          <form id="it-form" class="config-form">
+            <label class="field">
+              <span>Host</span>
+              <input id="it-host" autocomplete="off" placeholder="127.0.0.1" />
             </label>
-            <label>
-              Port
+            <label class="field">
+              <span>Port</span>
               <input id="it-port" type="number" min="1" max="65535" />
             </label>
-            <label class="toggle-row">
-              <input id="it-enabled" type="checkbox" />
-              Enabled
-            </label>
-            <div class="button-row">
-              <button type="submit">Save</button>
-              <button id="connect-it" type="button" class="secondary">Connect</button>
-              <button id="disconnect-it" type="button" class="secondary">Disconnect</button>
+            <p id="it-port-warn" class="port-warn" hidden></p>
+            <div class="form-foot">
+              <label class="switch">
+                <input id="it-enabled" type="checkbox" />
+                <span class="track" aria-hidden="true"></span>
+                Enabled
+              </label>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button id="connect-it" type="button" class="btn btn-ghost">Connect</button>
+                <button id="disconnect-it" type="button" class="btn btn-ghost">Disconnect</button>
+              </div>
             </div>
           </form>
-        </article>
+        </div>
 
-        <article class="panel">
-          <div class="panel-heading">
-            <h2>SquareLaunch WebSocket</h2>
-            <span id="squarelaunch-status" class="status">Disabled</span>
+        <!-- SquareLaunch / WebSocket -->
+        <div class="panel interface-panel" data-interface="squarelaunch" hidden>
+          <div class="panel-head">
+            <h2>SquareLaunch <span class="muted">WebSocket</span></h2>
+            <span id="squarelaunch-status" class="pill">Disabled</span>
           </div>
-          <form id="squarelaunch-form">
-            <label>
-              Host
+          <form id="squarelaunch-form" class="config-form">
+            <label class="field">
+              <span>Host</span>
               <input id="squarelaunch-host" autocomplete="off" placeholder="192.168.1.50" />
             </label>
-            <label>
-              Port
+            <label class="field">
+              <span>Port</span>
               <input id="squarelaunch-port" type="number" min="1" max="65535" />
             </label>
-            <label class="toggle-row">
-              <input id="squarelaunch-enabled" type="checkbox" />
-              Enabled
-            </label>
-            <button type="submit">Save</button>
+            <p id="squarelaunch-port-warn" class="port-warn" hidden></p>
+            <div class="form-foot">
+              <label class="switch">
+                <input id="squarelaunch-enabled" type="checkbox" />
+                <span class="track" aria-hidden="true"></span>
+                Enabled
+              </label>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Save</button>
+              </div>
+            </div>
           </form>
-        </article>
+        </div>
       </section>
 
-      <section class="event-log">
-        <h2>Events</h2>
+      <!-- Event log -->
+      <details class="events">
+        <summary>Events</summary>
         <ol id="events"></ol>
-      </section>
+      </details>
     </main>
 
     <script type="module" src="./main.js"></script>

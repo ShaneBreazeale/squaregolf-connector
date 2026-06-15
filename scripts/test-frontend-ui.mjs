@@ -11,10 +11,18 @@ class FakeElement {
     this.checked = false;
     this.children = [];
     this.listeners = new Map();
+    this.hidden = false;
+    this.dataset = {};
     this.classList = {
       classes: new Set(),
       add: (...names) => names.forEach((name) => this.classList.classes.add(name)),
       remove: (...names) => names.forEach((name) => this.classList.classes.delete(name)),
+      toggle: (name, force) => {
+        const on = force === undefined ? !this.classList.classes.has(name) : force;
+        if (on) this.classList.classes.add(name);
+        else this.classList.classes.delete(name);
+        return on;
+      },
     };
   }
 
@@ -46,6 +54,8 @@ const selectors = [
   "#api-url",
   "#openapi-link",
   "#swagger-link",
+  "#device-card",
+  "#device-dot",
   "#device-status",
   "#device-name",
   "#device-battery",
@@ -55,16 +65,19 @@ const selectors = [
   "#gspro-host",
   "#gspro-port",
   "#gspro-enabled",
+  "#gspro-port-warn",
   "#it-status",
   "#it-form",
   "#it-host",
   "#it-port",
   "#it-enabled",
+  "#it-port-warn",
   "#squarelaunch-status",
   "#squarelaunch-form",
   "#squarelaunch-host",
   "#squarelaunch-port",
   "#squarelaunch-enabled",
+  "#squarelaunch-port-warn",
   "#events",
   "#connect-device",
   "#disconnect-device",
@@ -84,6 +97,9 @@ globalThis.document = {
     }
     return element;
   },
+  // Interface tabs/panels are looked up by class; the contract test does not
+  // exercise tab switching, so an empty list keeps the DOM queries safe.
+  querySelectorAll: () => [],
 };
 globalThis.window = {
   location: { href: "http://127.0.0.1:5173/?apiPort=5177" },
